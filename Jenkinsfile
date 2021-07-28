@@ -61,7 +61,7 @@ pipeline {
                 script {
                     sleep (time: 15)
                     def response = httpRequest(
-                        url: "http://$KUBE_MASTER_IP:8081/",
+                        url: "http://$KUBE_NODE_IP:8081/",
                         timeout: 30
                     )
                     if (response.status != 200) {
@@ -75,7 +75,6 @@ pipeline {
                 branch 'master-copy'
             }
             steps {
-                input 'Deploy to Production?'
                 milestone(1)
                 kubernetesDeploy(
                     kubeconfigId: 'kube_conf_creds',
