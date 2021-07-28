@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        //be sure to replace "willbla" with your own Docker Hub username
+        CANARY_REPLICAS = 0
         DOCKER_IMAGE_NAME = "synfinmelab/train-schedule"
     }
     stages {
@@ -53,27 +53,45 @@ pipeline {
                 )
             }
         }
-        stage('DeployToProduction') {
+        stage('SmokeTest') {
             when {
                 branch 'master-copy'
             }
-            environment { 
-                CANARY_REPLICAS = 0
+            steps {
+                script {
+                    sleep (time: 15)
+                    def response = httpRequest(
+                        url: "http://$KUBE_NODE_IP:8081/",
+                        timeout: 30
+                    )
+                    if (response.status != 200) {
+                        error("Smoke test against canary deployment failed.")
+                    }
+                }
+            }
+        }
+        stage('DeployToProduction') {
+            when {
+                branch 'master-copy'
             }
             steps {
                 input 'Deploy to Production?'
                 milestone(1)
                 kubernetesDeploy(
                     kubeconfigId: 'kube_conf_creds',
-                    configs: 'train-schedule-kube-canary.yml',
-                    enableConfigSubstitution: true
-                )
-                kubernetesDeploy(
-                    kubeconfigId: 'kube_conf_creds',
                     configs: 'train-schedule-kube.yml',
                     enableConfigSubstitution: true
                 )
             }
+        }
+    }
+    post {
+        cleanup {
+                kubernetesDeploy(
+                    kubeconfigId: 'kube_conf_creds',
+                    configs: 'train-schedule-kube-canary.yml',
+                    enableConfigSubstitution: true
+                )
         }
     }
 }
