@@ -75,6 +75,7 @@ pipeline {
                 branch 'master-copy'
             }
             steps {
+                input 'Deploy to Production?'
                 milestone(1)
                 kubernetesDeploy(
                     kubeconfigId: 'kube_conf_creds',
